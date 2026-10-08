@@ -1,0 +1,134 @@
+version: 2
+models:
+  - name: fct_devin_sessions
+    description: >
+      One row per Devin enterprise session, with tags and created pull
+      requests rolled up. `acus_consumed` is the latest captured value for the
+      session (semi-additive: summing across sessions is valid, re-summing the
+      same session across loads is not). Session counts tie out to
+      `stg_devin__sessions`. `session_title` is included only when
+      `devin__include_session_title` is true.
+    columns:
+      - name: session_id
+        description: Devin session id (`devin-<uuid>`)
+        data_tests:
+          - unique
+          - not_null
+      - name: session_status
+        description: new, claimed, running, exit or error
+      - name: session_status_detail
+        description: Finer status detail (e.g. blocked, finished)
+      - name: created_at
+        description: Session creation time (UTC)
+      - name: updated_at
+        description: Last update time (UTC), as of the latest load
+      - name: acus_consumed
+        description: ACUs consumed as of the latest load (semi-additive)
+      - name: org_id
+        description: Devin org the session belongs to
+      - name: user_id
+        description: Devin user who started the session, null for service-user sessions
+      - name: service_user_id
+        description: Service user that started the session, null for human sessions
+      - name: origin
+        description: "webapp, slack, teams, api, linear, jira, automation, cli, desktop, code_scan or other"
+      - name: category
+        description: Devin-assigned work category
+      - name: subcategory
+        description: Devin-assigned subcategory
+      - name: devin_mode
+        description: Agent mode used
+      - name: playbook_id
+        description: Playbook attached to the session, if any
+      - name: automation_id
+        description: Automation that created the session, if any
+      - name: parent_session_id
+        description: Parent session for child sessions
+      - name: is_archived
+        description: True when archived
+      - name: session_url
+        description: Link to the session
+      - name: created_date
+        description: created_at as a date
+      - name: created_week
+        description: Monday of the week created_at falls in
+      - name: created_month
+        description: First day of the month created_at falls in
+      - name: tag_list
+        description: Sorted array of session tags (empty array when none)
+      - name: pull_request_count
+        description: PRs created by the session (additive)
+      - name: merged_pull_request_count
+        description: Of those, PRs whose latest captured state is merged (additive)
+      - name: is_service_user_session
+        description: True when started by a service user rather than a person
+      - name: is_child_session
+        description: True when spawned by another session
+      - name: is_finished
+        description: True when status is exit or error
+      - name: loaded_at
+        description: Timestamp of the load this row was taken from
+
+  - name: dim_devin_organizations
+    description: >
+      One row per Devin organization. `member_count` comes from the latest
+      `org_members` snapshot for that org (null when the feed is disabled).
+    columns:
+      - name: org_id
+        description: Devin org ID
+        data_tests:
+          - unique
+          - not_null
+      - name: org_name
+        description: Org display name
+      - name: member_count
+        description: Distinct members in the latest snapshot of the org
+      - name: members_as_of
+        description: Timestamp of the snapshot `member_count` was taken from
+      - name: loaded_at
+        description: Timestamp of the load the org row was taken from
+
+  - name: fct_devin_org_membership_changes
+    description: >
+      One row per membership change (add or remove) in a Devin org, sourced
+      from the enterprise audit log. Factless transaction fact: a row asserts
+      that a user was added to or removed from an org, by whom and when.
+      Org names, target user attributes and role names are resolved from the
+      `organizations`, `org_members` and `roles` feeds when those are enabled.
+    columns:
+      - name: audit_log_id
+        description: Primary key; the audit-log entry recording the change
+        data_tests:
+          - unique
+          - not_null
+      - name: changed_at
+        description: When the membership change occurred (UTC)
+      - name: change_type
+        description: "'added' or 'removed'"
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['added', 'removed']
+      - name: org_id
+        description: Devin org the user was added to or removed from
+      - name: org_name
+        description: Org display name, when resolvable
+      - name: target_user_id
+        description: Devin user ID of the affected user
+      - name: target_user_email
+        description: Affected user's email from their latest-known member snapshot
+      - name: target_user_name
+        description: Affected user's display name from their latest-known member snapshot
+      - name: actor_user_id
+        description: User ID of the human who made the change, null for service users
+      - name: actor_user_email
+        description: Email of the human who made the change
+      - name: actor_service_user_id
+        description: Service user ID that made the change, null for human actors
+      - name: actor_service_user_name
+        description: Service user name that made the change, null for human actors
+      - name: role_ids
+        description: Role IDs assigned by an add (VARIANT array); null on removes
+      - name: role_names
+        description: Role names for `role_ids` (falls back to the ID when unknown); null on removes

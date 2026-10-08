@@ -1,0 +1,53 @@
+name: "devin"
+version: "0.1.0"
+config-version: 2
+profile: "devin"
+
+require-dbt-version: [">=1.10.0", "<3.0.0"]
+
+model-paths: ["models"]
+macro-paths: ["macros"]
+
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+vars:
+  devin:
+    # Where `devin-export` output has been landed. Each table is
+    # (data VARIANT, loaded_at TIMESTAMP); see README "Landing contract".
+    devin_database: "{{ target.database }}"
+    devin_schema: devin
+    devin_loaded_at_column: loaded_at
+    devin_sessions_identifier: sessions
+    devin_audit_logs_identifier: audit_logs
+    devin_organizations_identifier: organizations
+    devin_org_members_identifier: org_members
+    devin_roles_identifier: roles
+
+    # Disable a feed you do not land. `sessions` is always required.
+    devin__using_audit_logs: true
+    devin__using_organizations: true
+    devin__using_org_members: true
+    devin__using_roles: true
+
+    # Session titles often echo the user's prompt; opt in to expose them.
+    devin__include_session_title: false
+
+    # Statuses that make `is_finished` true. Devin leaves most sessions
+    # `suspended` (idle, resumable) rather than `exit`; add it here if you
+    # want those counted as done for ACU/duration reporting.
+    devin__finished_statuses: ["exit", "error"]
+
+    # Set your contracted USD price per ACU to add `acu_cost_usd` to
+    # agg_devin_acu_daily. Left unset, the column is omitted.
+    # devin_acu_cost_usd: 2.25
+
+models:
+  devin:
+    +materialized: table
+    staging:
+      +materialized: view
+      +schema: devin_staging
+    marts:
+      +schema: devin

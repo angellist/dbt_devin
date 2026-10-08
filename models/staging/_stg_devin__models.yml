@@ -1,0 +1,150 @@
+version: 2
+models:
+  - name: stg_devin__sessions
+    description: >
+      One row per Devin enterprise session (all orgs), deduplicated on
+      `session_id` keeping the most recent load so `acus_consumed`, status and
+      `pull_requests` reflect the latest capture.
+    columns:
+      - name: session_id
+        description: Devin session id (`devin-<uuid>`)
+        data_tests:
+          - unique
+          - not_null
+      - name: session_title
+        description: Session title (often echoes the user's prompt)
+      - name: session_status
+        description: new, claimed, running, suspended, exit or error
+      - name: session_status_detail
+        description: Finer status detail (e.g. blocked, finished)
+      - name: acus_consumed
+        description: "ACUs consumed so far (semi-additive: latest value per session)"
+      - name: org_id
+        description: Devin org the session belongs to
+      - name: user_id
+        description: Devin user who started the session, null for service-user sessions
+      - name: service_user_id
+        description: Service user that started the session, null for human sessions
+      - name: origin
+        description: "webapp, slack, teams, api, linear, jira, automation, cli, desktop, code_scan or other"
+      - name: category
+        description: Devin-assigned work category
+      - name: subcategory
+        description: Devin-assigned subcategory
+      - name: devin_mode
+        description: Agent mode used
+      - name: playbook_id
+        description: Playbook attached to the session, if any
+      - name: automation_id
+        description: Automation that created the session, if any
+      - name: parent_session_id
+        description: Parent session for child sessions
+      - name: is_archived
+        description: True when archived
+      - name: session_url
+        description: Link to the session
+      - name: created_at
+        description: Session creation time (UTC)
+      - name: updated_at
+        description: Last update time (UTC), as of the latest load
+      - name: tags
+        description: Session tags (VARIANT array)
+      - name: pull_requests
+        description: PRs created by the session (VARIANT array of `{pr_url, pr_state}`)
+      - name: loaded_at
+        description: Timestamp of the load this row was taken from
+
+  - name: stg_devin__audit_logs
+    description: >
+      Devin enterprise audit-log entries (all action types), deduplicated on
+      `audit_log_id` across loads. One row per audit-log entry.
+    columns:
+      - name: audit_log_id
+        description: Unique ID of the audit-log entry
+        data_tests:
+          - unique
+          - not_null
+      - name: action
+        description: Action type (e.g. `add_member`, `delete_member`, `create_session`)
+      - name: created_at
+        description: When the action occurred (UTC)
+      - name: org_id
+        description: Devin org the action applies to, when org-scoped
+      - name: actor_user_id
+        description: User ID of the human actor, null for service-user actions
+      - name: actor_user_email
+        description: Email of the human actor
+      - name: actor_service_user_id
+        description: Service user ID of the actor, null for human actions
+      - name: actor_service_user_name
+        description: Service user name of the actor
+      - name: target_user_id
+        description: Affected user for membership actions, from `data.target_user_id`
+      - name: role_ids
+        description: Role IDs assigned by the action (VARIANT array), when any
+      - name: event_data
+        description: Full action-specific `data` payload (VARIANT)
+      - name: loaded_at
+        description: Timestamp of the load this row was taken from
+
+  - name: stg_devin__organizations
+    description: One row per Devin organization, from the latest export.
+    columns:
+      - name: org_id
+        description: Devin org ID
+        data_tests:
+          - unique
+          - not_null
+      - name: org_name
+        description: Org display name
+      - name: loaded_at
+        description: Timestamp of the load this row was taken from
+
+  - name: stg_devin__org_members
+    description: >
+      Snapshots of each org's direct member list. One row per member per org
+      per snapshot; use `snapshot_at` to select a snapshot. Retained
+      historically so removed users can still be resolved to a name and email.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - org_id
+              - user_id
+              - snapshot_at
+    columns:
+      - name: user_id
+        description: Devin user ID
+        data_tests:
+          - not_null
+      - name: org_id
+        description: Devin org ID
+        data_tests:
+          - not_null
+      - name: org_name
+        description: Org display name, as stamped by `devin-export members`
+      - name: org_member_email
+        description: Member email address
+      - name: org_member_name
+        description: Member display name
+      - name: role_assignments
+        description: The member's role assignments in the org (VARIANT)
+      - name: snapshot_at
+        description: Load timestamp of the export that produced this snapshot
+
+  - name: stg_devin__roles
+    description: One row per enterprise or org role, from the latest export.
+    columns:
+      - name: role_id
+        description: Role ID
+        data_tests:
+          - unique
+          - not_null
+      - name: role_name
+        description: Role display name
+      - name: role_type
+        description: Role scope/type as returned by the API
+      - name: org_id
+        description: Org the role belongs to, null for enterprise roles
+      - name: loaded_at
+        description: Timestamp of the load this row was taken from

@@ -1,0 +1,14 @@
+# Offline profile for CI: `dbt parse` never opens a connection.
+devin:
+  target: ci
+  outputs:
+    ci:
+      type: snowflake
+      account: placeholder
+      user: placeholder
+      password: placeholder
+      role: placeholder
+      warehouse: placeholder
+      database: placeholder
+      schema: placeholder
+      threads: 1

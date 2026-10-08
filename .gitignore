@@ -1,0 +1,14 @@
+target/
+dbt_packages/
+logs/
+package-lock.yml
+/profiles.yml
+
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+build/
+dist/
+.venv/
+dbt_internal_packages/

@@ -1,0 +1,54 @@
+version: 2
+sources:
+  - name: devin
+    database: "{{ var('devin_database', target.database) }}"
+    schema: "{{ var('devin_schema', 'devin') }}"
+    loader: devin-export
+    description: >
+      Raw JSON from the Devin Enterprise API (v3) as emitted by `devin-export`,
+      one row per record per load: `data VARIANT, loaded_at TIMESTAMP`. Loads
+      are append-only; the staging models dedupe on each record's natural key.
+    config:
+      loaded_at_field: "{{ var('devin_loaded_at_column', 'loaded_at') }}"
+    tables:
+      - name: sessions
+        identifier: "{{ var('devin_sessions_identifier', 'sessions') }}"
+        description: >
+          `GET /v3/enterprise/sessions`. Re-export every session updated in a
+          rolling window so `acus_consumed`, `status` and `pull_requests` are
+          re-captured as a session progresses; the latest load per
+          `session_id` wins.
+        config:
+          freshness:
+            warn_after: {count: 2, period: day}
+      - name: audit_logs
+        identifier: "{{ var('devin_audit_logs_identifier', 'audit_logs') }}"
+        config:
+          enabled: "{{ var('devin__using_audit_logs', true) }}"
+        description: >
+          `GET /v3/enterprise/audit-logs`. Every enterprise audit-log entry
+          (all action types). Window overlap between exports is harmless; the
+          staging model dedupes on `audit_log_id`.
+      - name: organizations
+        identifier: "{{ var('devin_organizations_identifier', 'organizations') }}"
+        config:
+          enabled: "{{ var('devin__using_organizations', true) }}"
+        description: >
+          `GET /v3/enterprise/organizations`. Full snapshot of the enterprise's
+          organizations per export.
+      - name: org_members
+        identifier: "{{ var('devin_org_members_identifier', 'org_members') }}"
+        config:
+          enabled: "{{ var('devin__using_org_members', true) }}"
+        description: >
+          `GET /v3/enterprise/organizations/{org_id}/members/users`, one row
+          per member per org per export (`devin-export members` stamps
+          `org_id` and `org_name` on each record). Snapshots are retained so
+          removed users still resolve to a name and email.
+      - name: roles
+        identifier: "{{ var('devin_roles_identifier', 'roles') }}"
+        config:
+          enabled: "{{ var('devin__using_roles', true) }}"
+        description: >
+          `GET /v3/enterprise/roles`. Full snapshot of enterprise and org
+          roles per export.

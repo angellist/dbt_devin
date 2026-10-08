@@ -134,6 +134,7 @@ in `<target_schema>_devin`. Override with the usual `models: devin: ...` config.
 | `devin_<feed>_identifier` | `sessions`, `audit_logs`, `organizations`, `org_members`, `roles` | Landing table names |
 | `devin__using_audit_logs`, `devin__using_organizations`, `devin__using_org_members`, `devin__using_roles` | `true` | Disable models and sources for feeds you do not land |
 | `devin__include_session_title` | `false` | Add `session_title` to `fct_devin_sessions` |
+| `devin__finished_statuses` | `["exit", "error"]` | Statuses treated as finished by `is_finished` / `finished_session_count`. Devin leaves most sessions `suspended`; add it to count those as done |
 | `devin_acu_cost_usd` | unset | Your USD price per ACU; when set, adds `acu_cost_usd` to `agg_devin_acu_daily` |
 
 ## Warehouse support

@@ -14,7 +14,7 @@ models:
       - name: session_title
         description: Session title (often echoes the user's prompt)
       - name: session_status
-        description: new, claimed, running, exit or error
+        description: new, claimed, running, suspended, exit or error
       - name: session_status_detail
         description: Finer status detail (e.g. blocked, finished)
       - name: acus_consumed

@@ -34,6 +34,11 @@ vars:
     # Session titles often echo the user's prompt; opt in to expose them.
     devin__include_session_title: false
 
+    # Statuses that make `is_finished` true. Devin leaves most sessions
+    # `suspended` (idle, resumable) rather than `exit`; add it here if you
+    # want those counted as done for ACU/duration reporting.
+    devin__finished_statuses: ["exit", "error"]
+
     # Set your contracted USD price per ACU to add `acu_cost_usd` to
     # agg_devin_acu_daily. Left unset, the column is omitted.
     # devin_acu_cost_usd: 2.25

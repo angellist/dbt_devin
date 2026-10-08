@@ -15,7 +15,7 @@ models:
           - unique
           - not_null
       - name: session_status
-        description: new, claimed, running, exit or error
+        description: new, claimed, running, suspended, exit or error
       - name: session_status_detail
         description: Finer status detail (e.g. blocked, finished)
       - name: created_at
@@ -65,7 +65,7 @@ models:
       - name: is_child_session
         description: True when spawned by another session
       - name: is_finished
-        description: True when status is exit or error
+        description: True when `session_status` is in `devin__finished_statuses` (default exit, error; `suspended` is not counted unless added)
       - name: loaded_at
         description: Timestamp of the load this row was taken from
 
@@ -226,7 +226,7 @@ models:
       - name: session_count
         description: Sessions created (additive)
       - name: finished_session_count
-        description: Of those, sessions whose latest status is exit or error (additive)
+        description: Of those, sessions whose latest status is in `devin__finished_statuses` (additive)
       - name: child_session_count
         description: Of those, sessions spawned by another session (additive)
       - name: acus_consumed

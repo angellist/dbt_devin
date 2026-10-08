@@ -1,3 +1,5 @@
+{% set finished_statuses = var('devin__finished_statuses', ['exit', 'error']) %}
+
 with sessions as (
     select *
     from {{ ref('stg_devin__sessions') }}
@@ -53,7 +55,11 @@ select
     coalesce(pull_requests.merged_pull_request_count, 0) as merged_pull_request_count,
     sessions.service_user_id is not null as is_service_user_session,
     sessions.parent_session_id is not null as is_child_session,
-    sessions.session_status in ('exit', 'error') as is_finished,
+    sessions.session_status in (
+        {%- for status in finished_statuses %}
+        '{{ status }}'{{ ',' if not loop.last }}
+        {%- endfor %}
+    ) as is_finished,
     sessions.loaded_at
 from sessions
 left join tags

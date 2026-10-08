@@ -72,7 +72,8 @@ models:
   - name: dim_devin_organizations
     description: >
       One row per Devin organization. `member_count` comes from the latest
-      `org_members` snapshot for that org (null when the feed is disabled).
+      `org_members` export (0 when the org had no members in it; null when the
+      feed is disabled).
     columns:
       - name: org_id
         description: Devin org ID
@@ -82,9 +83,9 @@ models:
       - name: org_name
         description: Org display name
       - name: member_count
-        description: Distinct members in the latest snapshot of the org
+        description: Distinct members of the org in the latest `org_members` export (0 if none)
       - name: members_as_of
-        description: Timestamp of the snapshot `member_count` was taken from
+        description: Timestamp (`snapshot_at`) of the latest `org_members` export `member_count` was taken from
       - name: loaded_at
         description: Timestamp of the load the org row was taken from
 

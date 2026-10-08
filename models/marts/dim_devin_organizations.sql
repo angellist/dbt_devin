@@ -8,25 +8,22 @@ with organizations as (
 ),
 
 {% if using_members %}
+-- `devin-export members` walks every organization in one run, so the newest
+-- snapshot_at across all orgs is the latest full export. Orgs with no rows in
+-- that export have zero members rather than a stale count.
 latest_snapshot as (
-    select
-        org_id,
-        max(snapshot_at) as snapshot_at
+    select max(snapshot_at) as snapshot_at
     from {{ ref('stg_devin__org_members') }}
-    group by 1
 ),
 
 member_counts as (
     select
         members.org_id,
-        latest_snapshot.snapshot_at as members_as_of,
         count(distinct members.user_id) as member_count
     from {{ ref('stg_devin__org_members') }} as members
     inner join latest_snapshot
-        on
-            members.org_id = latest_snapshot.org_id
-            and members.snapshot_at = latest_snapshot.snapshot_at
-    group by 1, 2
+        on members.snapshot_at = latest_snapshot.snapshot_at
+    group by 1
 ),
 {% endif %}
 
@@ -35,8 +32,8 @@ final as (
         organizations.org_id,
         organizations.org_name,
         {% if using_members %}
-        member_counts.member_count,
-        member_counts.members_as_of,
+        coalesce(member_counts.member_count, 0) as member_count,
+        latest_snapshot.snapshot_at as members_as_of,
         {% else %}
         cast(null as number) as member_count,
         cast(null as timestamp_ntz) as members_as_of,
@@ -44,6 +41,7 @@ final as (
         organizations.loaded_at
     from organizations
     {% if using_members %}
+    cross join latest_snapshot
     left join member_counts
         on organizations.org_id = member_counts.org_id
     {% endif %}

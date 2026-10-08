@@ -17,6 +17,8 @@ from collections.abc import Iterable
 from datetime import datetime, timedelta, timezone
 from typing import Any, TextIO
 
+import requests
+
 from devin_export.api import DEFAULT_BASE_URL, DevinClient, org_display_name
 
 API_KEY_ENV = "DEVIN_ENTERPRISE_API_KEY"
@@ -56,48 +58,65 @@ def write_records(records: Iterable[dict[str, Any]], out: TextIO, fmt: str) -> i
     return len(records)
 
 
+def _add_common_options(parser: argparse.ArgumentParser, *, suppress_defaults: bool) -> None:
+    def default(value: Any) -> Any:
+        return argparse.SUPPRESS if suppress_defaults else value
+
+    parser.add_argument(
+        "--api-key",
+        default=default(None),
+        help=f"Devin Enterprise API key (default: ${API_KEY_ENV})",
+    )
+    parser.add_argument(
+        "--base-url",
+        default=default(None),
+        help=f"API base URL (default: ${BASE_URL_ENV} or {DEFAULT_BASE_URL})",
+    )
+    parser.add_argument("-o", "--output", default=default("-"), help="Output file (default: stdout)")
+    parser.add_argument(
+        "--format",
+        choices=["jsonl", "json"],
+        default=default("jsonl"),
+        help="jsonl: one object per line (default); json: a single JSON array",
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", default=default(False), help="Log each API page to stderr"
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="devin-export",
         description="Export Devin Enterprise API records as JSON for warehouse loading.",
     )
-    parser.add_argument(
-        "--api-key",
-        default=None,
-        help=f"Devin Enterprise API key (default: ${API_KEY_ENV})",
-    )
-    parser.add_argument(
-        "--base-url",
-        default=None,
-        help=f"API base URL (default: ${BASE_URL_ENV} or {DEFAULT_BASE_URL})",
-    )
-    parser.add_argument("-o", "--output", default="-", help="Output file (default: stdout)")
-    parser.add_argument(
-        "--format",
-        choices=["jsonl", "json"],
-        default="jsonl",
-        help="jsonl: one object per line (default); json: a single JSON array",
-    )
-    parser.add_argument("-v", "--verbose", action="store_true", help="Log each API page to stderr")
+    _add_common_options(parser, suppress_defaults=False)
+
+    # Subcommands accept the same options (with suppressed defaults so they
+    # don't clobber top-level values), so `-o`/`--format` may go before or
+    # after the subcommand name.
+    common = argparse.ArgumentParser(add_help=False)
+    _add_common_options(common, suppress_defaults=True)
 
     sub = parser.add_subparsers(dest="command", required=True)
 
     window_help = "Epoch seconds, ISO-8601, 'now', or a relative duration like 7d / 36h"
 
-    sessions = sub.add_parser("sessions", help="Sessions updated in a time window")
+    sessions = sub.add_parser("sessions", parents=[common], help="Sessions updated in a time window")
     sessions.add_argument("--updated-after", default="7d", help=f"Window start (default: 7d). {window_help}")
     sessions.add_argument("--updated-before", default="now", help=f"Window end (default: now). {window_help}")
 
-    audit = sub.add_parser("audit-logs", help="Audit-log entries in a time window")
+    audit = sub.add_parser("audit-logs", parents=[common], help="Audit-log entries in a time window")
     audit.add_argument("--time-after", default="1d", help=f"Window start (default: 1d). {window_help}")
     audit.add_argument("--time-before", default="now", help=f"Window end (default: now). {window_help}")
 
-    sub.add_parser("organizations", help="All organizations in the enterprise")
+    sub.add_parser("organizations", parents=[common], help="All organizations in the enterprise")
 
-    members = sub.add_parser("members", help="Direct members of each organization (stamped with org_id/org_name)")
+    members = sub.add_parser(
+        "members", parents=[common], help="Direct members of each organization (stamped with org_id/org_name)"
+    )
     members.add_argument("--org", action="append", dest="org_ids", help="Org ID to export (repeatable; default: all)")
 
-    sub.add_parser("roles", help="All enterprise and org roles")
+    sub.add_parser("roles", parents=[common], help="All enterprise and org roles")
 
     return parser
 
@@ -142,7 +161,11 @@ def main(argv: list[str] | None = None) -> int:
     base_url = args.base_url or os.environ.get(BASE_URL_ENV) or DEFAULT_BASE_URL
 
     client = DevinClient(api_key=api_key, base_url=base_url)
-    records = run(args, client)
+    try:
+        records = run(args, client)
+    except requests.RequestException as exc:
+        logging.getLogger(__name__).error("%s: API request failed: %s", args.command, exc)
+        return 1
 
     if args.output == "-":
         count = write_records(records, sys.stdout, args.format)

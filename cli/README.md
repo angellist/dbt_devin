@@ -9,7 +9,7 @@ pip install ./cli
 export DEVIN_ENTERPRISE_API_KEY=...
 
 devin-export sessions --updated-after 7d > sessions.jsonl
-devin-export audit-logs --after 36h --before now > audit_logs.jsonl
+devin-export audit-logs --time-after 36h --time-before now > audit_logs.jsonl
 devin-export organizations > organizations.jsonl
 devin-export members > org_members.jsonl
 devin-export roles > roles.jsonl

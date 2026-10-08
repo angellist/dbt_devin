@@ -2,6 +2,7 @@ import io
 import json
 from datetime import datetime, timezone
 
+import requests
 import responses
 
 from devin_export.api import DEFAULT_BASE_URL
@@ -47,6 +48,26 @@ def test_members_are_stamped_with_org(tmp_path, monkeypatch):
 
     rows = [json.loads(line) for line in output.read_text().splitlines()]
     assert rows == [{"user_id": "u-1", "email": "a@example.com", "org_id": "org-1", "org_name": "Finance"}]
+
+
+@responses.activate
+def test_common_options_accepted_after_subcommand(tmp_path, monkeypatch):
+    monkeypatch.setenv("DEVIN_ENTERPRISE_API_KEY", "k")
+    responses.get(f"{DEFAULT_BASE_URL}/roles", json={"items": [{"role_id": "r-1"}], "has_next_page": False})
+    output = tmp_path / "roles.json"
+
+    assert main(["roles", "-o", str(output), "--format", "json"]) == 0
+
+    assert json.loads(output.read_text()) == [{"role_id": "r-1"}]
+
+
+@responses.activate
+def test_api_failure_returns_nonzero(monkeypatch, caplog):
+    monkeypatch.setenv("DEVIN_ENTERPRISE_API_KEY", "k")
+    responses.get(f"{DEFAULT_BASE_URL}/roles", body=requests.ConnectionError("boom"))
+
+    assert main(["roles"]) == 1
+    assert "API request failed" in caplog.text
 
 
 def test_missing_api_key_errors(monkeypatch, capsys):

@@ -9,8 +9,8 @@ Answer questions like:
 - How many pull requests do sessions open, and how many get merged?
 - Who was added to or removed from which Devin org, by whom, and with which roles?
 
-Built and used in production by the AngelList data team. Snowflake only for now
-(see [Warehouse support](#warehouse-support)).
+Lifted from the models and extractor the AngelList data team runs in production.
+Snowflake only for now (see [Warehouse support](#warehouse-support)).
 
 ## How it fits together
 
@@ -147,7 +147,7 @@ Snowflake only. The staging layer relies on `VARIANT` path access,
 
 - A Devin **Enterprise** plan and an API key for an enterprise service user
   with read access (sessions, audit logs, organizations, roles).
-- dbt Core >= 1.5 or dbt Fusion, `dbt-snowflake`, and `dbt_utils` >= 1.0
+- dbt Core >= 1.10 or dbt Fusion, `dbt-snowflake`, and `dbt_utils` >= 1.0
   (installed automatically by `dbt deps`).
 - Python >= 3.9 for `devin-export`.
 

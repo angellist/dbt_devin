@@ -12,6 +12,13 @@ Answer questions like:
 Lifted from the models and extractor the AngelList data team runs in production.
 Snowflake only for now (see [Warehouse support](#warehouse-support)).
 
+## Status
+
+v0.1: first public release, being adopted by the AngelList data team. Install by `git:` pin until it is
+listed on the [dbt Package Hub](https://hub.getdbt.com); the Hub listing will
+follow once the package has run against production data for a while. Issues and
+PRs welcome.
+
 ## How it fits together
 
 ```
@@ -124,6 +131,47 @@ Then `dbt deps && dbt build --select package:devin`.
 Staging models are views in `<target_schema>_devin_staging`; marts are tables
 in `<target_schema>_devin`. Override with the usual `models: devin: ...` config.
 
+### Example queries
+
+ACUs and sessions per org per week:
+
+```sql
+select
+    date_trunc('week', created_date) as created_week,
+    org_id,
+    sum(session_count) as sessions,
+    sum(acus_consumed) as acus
+from {{ ref('agg_devin_acu_daily') }}
+group by 1, 2
+order by 1, 2
+```
+
+Seats with no session in the last 30 days:
+
+```sql
+select user_email, user_full_name, role_names, last_session_at
+from {{ ref('dim_devin_users') }}
+where is_current_member and not is_active_last_30d
+order by last_session_at nulls first
+```
+
+Pull-request merge rate by repo:
+
+```sql
+select
+    github_repo_owner || '/' || github_repo_name as repo,
+    count(distinct pr_url) as prs,
+    count(distinct case when is_merged then pr_url end) as merged_prs
+from {{ ref('fct_devin_pull_requests') }}
+where github_repo_name is not null
+group by 1
+order by prs desc
+```
+
+Marts are plain full-refresh tables (no incremental logic); at Devin's volumes
+(a few thousand sessions a day for a large enterprise) a full build takes
+seconds, so there is nothing to tune.
+
 ### Variables
 
 | Variable | Default | Purpose |
@@ -151,15 +199,23 @@ Snowflake only. The staging layer relies on `VARIANT` path access,
   (installed automatically by `dbt deps`).
 - Python >= 3.9 for `devin-export`.
 
-## Development
+## Contributing
 
 ```bash
 pip install -e "./cli[dev]" && pytest cli && ruff check cli
 DBT_PROFILES_DIR=.github dbt deps && dbt parse && sqlfluff lint models
 ```
 
-CI runs the same (see `.github/workflows/ci.yml`). Releases are git tags
-(`vX.Y.Z`); pin them in `packages.yml`.
+CI runs the same (see `.github/workflows/ci.yml`). To exercise the models end
+to end, create the landing tables from [section 2](#2-land-the-landing-contract)
+in a dev schema, load a `devin-export` dump (or a few hand-written rows in the
+same shape) and run `dbt build` with `devin_database` / `devin_schema` pointed
+at it; there is no Devin sandbox, so the test data is whatever your own
+enterprise exports.
+
+Releases are git tags `vX.Y.Z` matching `version:` in `dbt_project.yml` and
+`cli/pyproject.toml`, with notes in the GitHub release. Pin tags in
+`packages.yml`; `main` may change between releases.
 
 ## License
 

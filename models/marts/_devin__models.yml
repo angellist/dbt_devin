@@ -133,3 +133,172 @@ models:
         description: Role IDs assigned by an add (VARIANT array); null on removes
       - name: role_names
         description: Role names for `role_ids` (falls back to the ID when unknown); null on removes
+
+  - name: fct_devin_pull_requests
+    description: >
+      One row per pull request a Devin session created or updated, flattened
+      from `sessions.pull_requests`. The same PR can appear under more than one
+      session (e.g. a parent and its child), so the grain is (session, PR URL);
+      count distinct `pr_url` for PR-level numbers. `pr_state` is the latest
+      captured state. GitHub owner/repo/number are parsed from `pr_url` and
+      are null for non-GitHub URLs; join `github_repo_owner`,
+      `github_repo_name`, `github_pr_number` to your own GitHub data for review
+      and merge-time attribution.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - session_id
+              - pr_url
+    columns:
+      - name: session_pull_request_id
+        description: Surrogate key over (session_id, pr_url)
+        data_tests:
+          - unique
+          - not_null
+      - name: session_id
+        description: Devin session that created or updated the PR
+        data_tests:
+          - not_null
+      - name: pr_url
+        description: Pull request URL as reported by Devin
+        data_tests:
+          - not_null
+      - name: pr_state
+        description: Latest captured state (open, merged or closed)
+      - name: is_merged
+        description: True when `pr_state` is merged
+      - name: github_repo_owner
+        description: GitHub owner or org parsed from `pr_url` (null for non-GitHub URLs)
+      - name: github_repo_name
+        description: GitHub repository name parsed from `pr_url`
+      - name: github_pr_number
+        description: GitHub PR number parsed from `pr_url`
+      - name: org_id
+        description: Devin org of the session
+      - name: user_id
+        description: User who started the session, null for service-user sessions
+      - name: service_user_id
+        description: Service user that started the session, null for human sessions
+      - name: session_origin
+        description: Origin of the session (webapp, slack, api, ...)
+      - name: session_status
+        description: Latest captured status of the session
+      - name: session_created_at
+        description: When the session was created (UTC)
+      - name: session_updated_at
+        description: When the session was last updated (UTC)
+      - name: loaded_at
+        description: Timestamp of the load the session row was taken from
+
+  - name: agg_devin_acu_daily
+    description: >
+      One row per session creation date, org, user (or service user) and
+      origin: a daily rollup of `fct_devin_sessions`. Sessions are attributed
+      to the day they were created, so `acus_consumed` is the latest captured
+      total for sessions started that day (it grows as running sessions are
+      re-captured). Only dates with sessions appear; spine against your date
+      dimension for dense dates. Measures are additive and tie out to
+      `fct_devin_sessions`. `acu_cost_usd` is included only when the
+      `devin_acu_cost_usd` var is set.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - created_date
+              - org_id
+              - user_id
+              - service_user_id
+              - origin
+    columns:
+      - name: created_date
+        description: Date the sessions were created (UTC)
+        data_tests:
+          - not_null
+      - name: org_id
+        description: Devin org
+      - name: user_id
+        description: Devin user, null for service-user sessions
+      - name: service_user_id
+        description: Service user, null for human sessions
+      - name: origin
+        description: Session origin (webapp, slack, api, ...)
+      - name: session_count
+        description: Sessions created (additive)
+      - name: finished_session_count
+        description: Of those, sessions whose latest status is exit or error (additive)
+      - name: child_session_count
+        description: Of those, sessions spawned by another session (additive)
+      - name: acus_consumed
+        description: Sum of latest-captured ACUs for sessions created that day (additive across rows)
+      - name: acu_cost_usd
+        description: "`acus_consumed * devin_acu_cost_usd`; present only when the var is set"
+      - name: pull_request_count
+        description: PRs created by those sessions (additive)
+      - name: merged_pull_request_count
+        description: Of those, PRs whose latest captured state is merged (additive)
+      - name: loaded_at
+        description: Latest load timestamp among the rolled-up sessions
+
+  - name: dim_devin_users
+    description: >
+      One row per Devin user seen either in the latest `org_members` export or
+      as the starter of a session. `is_current_member` is false for users who
+      have sessions but are absent from the latest export (removed seats);
+      their email and name come from their last-known snapshot. Session
+      activity measures come from `fct_devin_sessions` and are non-additive
+      across users' orgs (a user in two orgs appears once). The 30-day window
+      is relative to the time the model is built.
+    columns:
+      - name: user_id
+        description: Devin user ID
+        data_tests:
+          - unique
+          - not_null
+      - name: user_email
+        description: User email (null when the `org_members` feed is disabled)
+      - name: user_full_name
+        description: User display name (null when the `org_members` feed is disabled)
+      - name: is_current_member
+        description: True when the user is in the latest `org_members` export (null when the feed is disabled)
+      - name: org_count
+        description: Orgs the user belongs to in the latest export (0 when absent)
+      - name: org_ids
+        description: Sorted array of org IDs the user belongs to in the latest export
+      - name: role_names
+        description: Sorted distinct role names across the user's current org memberships
+      - name: member_as_of
+        description: Timestamp (`snapshot_at`) of the export `is_current_member` was taken from
+      - name: session_count
+        description: Sessions the user has started (all time, as captured)
+      - name: session_count_last_30d
+        description: Sessions started in the 30 days before the model was built
+      - name: acus_consumed
+        description: Latest-captured ACUs across the user's sessions
+      - name: first_session_at
+        description: Creation time of the user's earliest captured session (UTC)
+      - name: last_session_at
+        description: Creation time of the user's most recent session (UTC)
+      - name: is_active_last_30d
+        description: True when `session_count_last_30d` > 0
+
+  - name: dim_devin_roles
+    description: >
+      One row per Devin role (enterprise- or org-scoped), with the org name
+      resolved from the `organizations` feed when enabled.
+    columns:
+      - name: role_id
+        description: Devin role ID
+        data_tests:
+          - unique
+          - not_null
+      - name: role_name
+        description: Role display name
+      - name: role_type
+        description: "'enterprise' or 'org'"
+      - name: org_id
+        description: Org the role is scoped to; null for enterprise roles
+      - name: org_name
+        description: Org display name, when resolvable
+      - name: loaded_at
+        description: Timestamp of the load the role row was taken from

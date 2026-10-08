@@ -17,9 +17,12 @@ Built and used in production by the AngelList data team. Snowflake only for now
 ```
 Devin Enterprise API ──devin-export──▶ JSON ──your loader──▶ raw landing tables ──dbt_devin──▶ marts
  /sessions                                                  (data VARIANT,              fct_devin_sessions
- /audit-logs                                                 loaded_at)                 fct_devin_org_membership_changes
- /organizations, /roles                                                                 dim_devin_organizations
- /organizations/{id}/members/users
+ /audit-logs                                                 loaded_at)                 fct_devin_pull_requests
+ /organizations, /roles                                                                 fct_devin_org_membership_changes
+ /organizations/{id}/members/users                                                      agg_devin_acu_daily
+                                                                                        dim_devin_users
+                                                                                        dim_devin_organizations
+                                                                                        dim_devin_roles
 ```
 
 The package deliberately stops at the API/warehouse seam: `devin-export` writes
@@ -110,8 +113,12 @@ Then `dbt deps && dbt build --select package:devin`.
 | Model | Grain | Notes |
 |---|---|---|
 | `fct_devin_sessions` | one row per session | Latest capture per session; tags and PRs rolled up (`tag_list`, `pull_request_count`, `merged_pull_request_count`); `acus_consumed` is semi-additive (sum across sessions, never across loads). |
+| `fct_devin_pull_requests` | one row per (session, PR URL) | Flattened from `sessions.pull_requests`, with GitHub owner/repo/number parsed from the URL so you can join to your own GitHub data. |
 | `fct_devin_org_membership_changes` | one row per add/remove event | From the audit log; resolves org name, target user and role names from the other feeds when enabled. |
+| `agg_devin_acu_daily` | one row per created date × org × user × origin | Daily rollup of `fct_devin_sessions` (sessions, ACUs, PRs); add `acu_cost_usd` by setting `devin_acu_cost_usd`. |
+| `dim_devin_users` | one row per user | Current membership (orgs, roles) from the latest members snapshot plus session activity (`first_session_at`, `session_count_last_30d`, ...); removed seats keep a row with `is_current_member = false`. |
 | `dim_devin_organizations` | one row per org | With `member_count` from the latest members snapshot. |
+| `dim_devin_roles` | one row per role | Enterprise and org roles, with org name resolved. |
 | `stg_devin__sessions`, `stg_devin__audit_logs`, `stg_devin__organizations`, `stg_devin__org_members`, `stg_devin__roles` | one row per record (deduped) | Typed columns out of the `data` VARIANT. `org_members` keeps every snapshot (`snapshot_at`). |
 
 Staging models are views in `<target_schema>_devin_staging`; marts are tables
@@ -127,6 +134,7 @@ in `<target_schema>_devin`. Override with the usual `models: devin: ...` config.
 | `devin_<feed>_identifier` | `sessions`, `audit_logs`, `organizations`, `org_members`, `roles` | Landing table names |
 | `devin__using_audit_logs`, `devin__using_organizations`, `devin__using_org_members`, `devin__using_roles` | `true` | Disable models and sources for feeds you do not land |
 | `devin__include_session_title` | `false` | Add `session_title` to `fct_devin_sessions` |
+| `devin_acu_cost_usd` | unset | Your USD price per ACU; when set, adds `acu_cost_usd` to `agg_devin_acu_daily` |
 
 ## Warehouse support
 

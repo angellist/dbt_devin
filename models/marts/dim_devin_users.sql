@@ -112,7 +112,7 @@ final as (
         coalesce(session_activity.acus_consumed, 0) as acus_consumed,
         session_activity.first_session_at,
         session_activity.last_session_at,
-        session_activity.session_count_last_30d > 0 as is_active_last_30d
+        coalesce(session_activity.session_count_last_30d, 0) > 0 as is_active_last_30d
     from users
     left join session_activity
         on users.user_id = session_activity.user_id

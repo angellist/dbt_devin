@@ -219,7 +219,7 @@ Releases are git tags `vX.Y.Z` matching `version:` in `dbt_project.yml` and
 
 ## License
 
-Apache-2.0; see `LICENSE` and `NOTICE`. Copyright AngelList.
+Apache-2.0; see `LICENSE` and `NOTICE`. Copyright 2026 AL Advisors Management, Inc.
 
 "Devin" is a trademark of Cognition AI, Inc., used here only to describe the
 product this package reads data from. This project is independent and is not

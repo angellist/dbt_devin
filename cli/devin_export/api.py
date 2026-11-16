@@ -91,7 +91,7 @@ class DevinClient:
 
 
 def org_display_name(org: dict[str, Any]) -> str | None:
-    return org.get("org_name") or org.get("name")
+    return org.get("name")
 
 
 def _retry_session() -> requests.Session:

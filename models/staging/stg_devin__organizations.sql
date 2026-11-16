@@ -18,6 +18,6 @@ deduped as (
 
 select
     data:org_id::varchar as org_id,
-    coalesce(data:org_name, data:name)::varchar as org_name,
+    data:name::varchar as org_name,
     loaded_at
 from deduped

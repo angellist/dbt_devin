@@ -144,7 +144,5 @@ models:
         description: Role display name
       - name: role_type
         description: Role scope/type as returned by the API
-      - name: org_id
-        description: Org the role belongs to, null for enterprise roles
       - name: loaded_at
         description: Timestamp of the load this row was taken from

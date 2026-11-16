@@ -20,6 +20,5 @@ select
     data:role_id::varchar as role_id,
     data:role_name::varchar as role_name,
     data:role_type::varchar as role_type,
-    data:org_id::varchar as org_id,
     loaded_at
 from deduped

@@ -116,7 +116,7 @@ models:
       - name: org_name
         description: Org display name, when resolvable
       - name: target_user_id
-        description: Devin user ID of the affected user
+        description: Devin user ID of the affected user; null when the audit-log entry omits it
       - name: target_user_email
         description: Affected user's email from their latest-known member snapshot
       - name: target_user_name
@@ -165,9 +165,9 @@ models:
         data_tests:
           - not_null
       - name: pr_state
-        description: Latest captured state (open, merged or closed)
+        description: Latest captured state (e.g. open, merged, closed); null when Devin has not recorded one
       - name: is_merged
-        description: True when `pr_state` is merged
+        description: True when `pr_state` is merged; false otherwise, including when `pr_state` is null
       - name: github_repo_owner
         description: GitHub owner or org parsed from `pr_url` (null for non-GitHub URLs)
       - name: github_repo_name

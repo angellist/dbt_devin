@@ -24,7 +24,7 @@ select
     session_pull_requests.session_id,
     session_pull_requests.pr_url,
     session_pull_requests.pr_state,
-    session_pull_requests.pr_state = 'merged' as is_merged,
+    coalesce(session_pull_requests.pr_state = 'merged', false) as is_merged,
     regexp_substr(session_pull_requests.pr_url, 'github\\.com/([^/]+)/([^/]+)/pull/([0-9]+)', 1, 1, 'e', 1)
         as github_repo_owner,
     regexp_substr(session_pull_requests.pr_url, 'github\\.com/([^/]+)/([^/]+)/pull/([0-9]+)', 1, 1, 'e', 2)

@@ -99,7 +99,7 @@ or column names are fine; point the package at them with the variables below.
 # packages.yml
 packages:
   - git: "https://github.com/angellist/dbt_devin.git"
-    revision: v0.1.0
+    revision: v0.2.0
 ```
 
 ```yaml

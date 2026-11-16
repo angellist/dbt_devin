@@ -36,7 +36,7 @@ def test_members_are_stamped_with_org(tmp_path, monkeypatch):
     monkeypatch.setenv("DEVIN_ENTERPRISE_API_KEY", "k")
     responses.get(
         f"{DEFAULT_BASE_URL}/organizations",
-        json={"items": [{"org_id": "org-1", "org_name": "Finance"}], "has_next_page": False},
+        json={"items": [{"org_id": "org-1", "name": "Finance"}], "has_next_page": False},
     )
     responses.get(
         f"{DEFAULT_BASE_URL}/organizations/org-1/members/users",

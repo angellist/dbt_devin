@@ -125,7 +125,7 @@ Then `dbt deps && dbt build --select package:devin`.
 | `agg_devin_acu_daily` | one row per created date × org × user × origin | Daily rollup of `fct_devin_sessions` (sessions, ACUs, PRs); add `acu_cost_usd` by setting `devin_acu_cost_usd`. |
 | `dim_devin_users` | one row per user | Current membership (orgs, roles) from the latest members snapshot plus session activity (`first_session_at`, `session_count_last_30d`, ...); removed seats keep a row with `is_current_member = false`. |
 | `dim_devin_organizations` | one row per org | With `member_count` from the latest members snapshot. |
-| `dim_devin_roles` | one row per role | Enterprise and org roles, with org name resolved. |
+| `dim_devin_roles` | one row per role | Enterprise and org roles, with role name and type. |
 | `stg_devin__sessions`, `stg_devin__audit_logs`, `stg_devin__organizations`, `stg_devin__org_members`, `stg_devin__roles` | one row per record (deduped) | Typed columns out of the `data` VARIANT. `org_members` keeps every snapshot (`snapshot_at`). |
 
 Staging models are views in `<target_schema>_devin_staging`; marts are tables

@@ -1,7 +1,7 @@
 import pytest
 import responses
 
-from devin_export.api import DEFAULT_BASE_URL, DevinClient
+from devin_export.api import DEFAULT_BASE_URL, DevinClient, org_display_name
 
 
 @pytest.fixture
@@ -47,3 +47,18 @@ def test_iter_list_rejects_repeated_cursor(client):
 def test_requires_api_key():
     with pytest.raises(ValueError):
         DevinClient(api_key="")
+
+
+@pytest.mark.parametrize(
+    ("org", "expected"),
+    [
+        ({"name": "Finance"}, "Finance"),
+        ({"name": "Finance", "org_name": "Legacy"}, "Finance"),
+        ({"name": ""}, ""),
+        ({"name": None}, None),
+        ({}, None),
+        ({"org_name": "Legacy"}, None),
+    ],
+)
+def test_org_display_name_uses_name_only(org, expected):
+    assert org_display_name(org) == expected

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "devin-export"
-version = "0.2.0"
+version = "0.2.1"
 description = "Export Devin Enterprise API records (sessions, audit logs, organizations, members, roles) as JSON for warehouse loading"
 readme = "README.md"
 license = {text = "Apache-2.0"}

@@ -79,7 +79,7 @@ models:
       - name: actor_service_user_name
         description: Service user name of the actor
       - name: target_user_id
-        description: Affected user for membership actions, from `data.target_user_id`
+        description: Affected user for membership actions, from `data.target_user_id`; null when the entry omits it
       - name: role_ids
         description: Role IDs assigned by the action (VARIANT array), when any
       - name: event_data
